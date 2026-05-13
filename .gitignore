@@ -3,3 +3,5 @@ results/*.png
 __pycache__/
 *.pyc
 *.log
+streaming/dash/*.m4s
+streaming/dash/*.mpd
