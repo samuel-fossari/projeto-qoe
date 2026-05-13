@@ -85,7 +85,37 @@ Após a inicialização da topologia com o controlador POX ativo, o teste de con
 | servidor (10.0.0.1) | cliente2 (10.0.0.3) | ✅ 0% perda |
 | cliente1 (10.0.0.2) | cliente2 (10.0.0.3) | ✅ 0% perda |
 
-### 3.2 Observações
+### 3.2 Servidor de Vídeo DASH
+
+O servidor de vídeo foi configurado utilizando nginx com conteúdo DASH gerado via ffmpeg.
+
+**Geração do conteúdo:**
+
+Um vídeo sintético de 2 minutos (1280×720, H.264 + AAC) foi gerado com ffmpeg e segmentado em três qualidades para simular a adaptação de bitrate do DASH:
+
+| Stream | Resolução | Bitrate de vídeo |
+|---|---|---|
+| Baixa qualidade | 640×360 | 250 kbps |
+| Média qualidade | 854×480 | 500 kbps |
+| Alta qualidade | 1280×720 | 1000 kbps |
+
+O segmentador gerou 6 streams (3 de vídeo + 3 de áudio), cada um com 15 a 24 segmentos `.m4s` e um manifesto principal `stream.mpd`.
+
+**Configuração do nginx:**
+
+O nginx foi configurado para servir os segmentos DASH com os cabeçalhos HTTP corretos (`Content-Type: application/dash+xml`, `Access-Control-Allow-Origin: *`, `Cache-Control: no-cache`).
+
+**Verificação:**
+
+```bash
+curl -I http://localhost/stream.mpd
+# HTTP/1.1 200 OK
+# Content-Type: application/dash+xml
+```
+
+O servidor respondeu com `200 OK` e o tipo de conteúdo correto, confirmando que o streaming DASH está operacional.
+
+### 3.3 Observações
 
 Durante a execução foram observados os seguintes avisos, todos sem impacto funcional:
 
