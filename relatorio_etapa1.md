@@ -2,7 +2,7 @@
 ## Melhoria da QoE em Streaming de Vídeo com Mininet, SDN e P4
 
 **Relatório de Progresso — Etapa 1**
-Maio de 2025
+Maio de 2026
 
 ---
 
