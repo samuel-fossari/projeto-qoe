@@ -1,0 +1,2 @@
+timestamp,cenario,origem,destino,throughput_mbps,latencia_min_ms,latencia_media_ms,latencia_max_ms,perda_pct
+2026-05-13T22:48:18.983788,baseline,10.0.0.2,10.0.0.1,9.52,10.456,10.973,17.15,0.0
