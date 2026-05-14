@@ -119,29 +119,40 @@ Content-Type: application/dash+xml
 
 **Verificação interna (dentro do Mininet):**
 
-O nginx foi iniciado dentro do namespace de rede do host servidor via:
+O nginx foi iniciado dentro do namespace de rede do host servidor e o cliente1 consumiu o stream via rede emulada, confirmando a cadeia completa: servidor -> s1 -> s2 -> cliente1.
 
-```
-servidor nginx -c /etc/nginx/nginx.conf -g "daemon off;" &
-```
+Erros de saída de áudio são esperados — o namespace de rede do Mininet não tem acesso ao dispositivo de áudio da máquina real e não afetam o experimento.
 
-O cliente1 consumiu o stream via rede emulada com sucesso:
+### 3.3 Medições Iniciais (Baseline)
 
-```
-cliente1 su -c "vlc http://10.0.0.1/stream.mpd --play-and-exit 2>&1 | tail -5" sam
-```
+As medições foram coletadas com o script metrics/coletar.py, que executa ping (20 pacotes) e iperf3 (10 segundos) do cliente1 para o servidor, sem nenhuma degradação aplicada.
 
-O VLC reproduziu o stream passando pelos switches OpenFlow s1 e s2, confirmando a cadeia completa: servidor -> s1 -> s2 -> cliente1.
+| Métrica | Valor | Interpretação |
+|---|---|---|
+| Throughput | 9.52 Mbps | Coerente com o limite de 10 Mbps do link s1-s2 |
+| Latência mínima | 10.46 ms | Ida e volta pelo link com 5ms de delay configurado |
+| Latência média | 10.97 ms | Estável, sem jitter significativo |
+| Latência máxima | 17.15 ms | Pico pontual, dentro do esperado |
+| Perda de pacotes | 0% | Rede estável sem degradação |
 
-Erros de saída de áudio ("Host está desligado") são esperados — o namespace de rede do Mininet não tem acesso ao dispositivo de áudio da máquina real e não afetam o experimento.
+Esses resultados confirmam que o ambiente está funcional e estável, servindo como referência para comparação com os cenários adversos da Etapa 2.
 
-### 3.3 Observações
+### 3.4 Automação com Makefile
+
+O arquivo Makefile centraliza os principais comandos do projeto:
+
+- make pox — sobe o controlador POX
+- make topologia — sobe a topologia Mininet
+- make baseline — coleta métricas sem degradação
+- make limpar — remove arquivos de resultados gerados
+
+### 3.5 Observações
 
 Durante a execução foram observados os seguintes avisos, todos sem impacto funcional:
 
 - **sch_htb: quantum of class 50001 is big** — aviso do kernel sobre configuração de QoS; não afeta os experimentos
 - **POX com Python 3.12** — versão fora da lista oficialmente suportada; o encaminhamento L2 funciona corretamente; erros de parsing de DNS são consequência desta incompatibilidade e não afetam o plano de dados
-- **VLC não executa como root** — contornado com `su -c "..." sam` dentro do Mininet
+- **VLC não executa como root** — contornado com su -c dentro do Mininet
 - **decode_slice_header error** — warnings menores do decodificador H.264 nos primeiros frames; resolvido ao regenerar o vídeo com yuv420p
 
 ---
@@ -150,7 +161,6 @@ Durante a execução foram observados os seguintes avisos, todos sem impacto fun
 
 | Etapa | Prazo | Descrição |
 |---|---|---|
-| Etapa 1 (restante) | 06 de maio | Coleta de métricas (iperf3, ping) e automação com Makefile |
 | Etapa 2 | 20 de maio | Indução de degradação com tc netem e caracterização da QoE sob carga adversa |
 | Etapa 3 | 10 de junho | Implementação da lógica de controle SDN para mitigação de degradação |
 | Etapa 4 | 24 de junho | Avaliação experimental completa e extensão P4 |
@@ -188,19 +198,18 @@ ffmpeg -i ~/video_teste.mp4 \
 
 ```bash
 # Terminal 1 — Controlador POX
-cd ~/pox
-python3 pox.py forwarding.l2_learning
+make pox
 
 # Terminal 2 — Topologia Mininet
-cd ~/projeto-qoe
-sudo python3 topology/topologia.py
+make topologia
 ```
 
 **Dentro do Mininet:**
 
 ```
 servidor nginx -c /etc/nginx/nginx.conf -g "daemon off;" &
-cliente1 su -c "vlc http://10.0.0.1/stream.mpd --play-and-exit" sam
+servidor iperf3 -s -D
+cliente1 python3 /home/sam/projeto-qoe/metrics/coletar.py baseline 10.0.0.2 10.0.0.1 metricas_baseline.csv
 ```
 
-**Verificação:** o pingAll deve reportar 0% dropped (6/6 received) e o VLC deve reproduzir o stream sem erros de rede.
+**Verificação:** o pingAll deve reportar 0% dropped (6/6 received), o VLC deve reproduzir o stream sem erros de rede, e o CSV de métricas deve ser gerado em results/metricas_baseline.csv.
